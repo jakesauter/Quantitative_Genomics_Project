@@ -16,21 +16,28 @@ knitr::opts_chunk$set(echo = TRUE,
 
 ```{r}
 library(dplyr)
+library(knitr)
+library(ggplot2)
 library(magrittr)
+library(patchwork)
 ```
-
 
 ## **Loading Data**
 
 ```{r}
 data_path <- '../data/'
 
-covars     <- read.csv(file.path(data_path, 'covars.csv'))
+covars     <- read.csv(file.path(data_path, 'covars.csv'), 
+                       row.names = 1)
+
 snp_info   <- read.csv(file.path(data_path, 'SNP_info.csv'))
+
 gene_info  <- read.csv(file.path(data_path, 'gene_info.csv'))
+
 genotypes  <- read.csv(file.path(data_path, 'genotypes.csv'), 
                        row.names = 1, header = TRUE, 
                        stringsAsFactors = FALSE)
+
 phenotypes <- read.csv(file.path(data_path, 'phenotypes.csv'), 
                        row.names = 1, header = TRUE, 
                        stringsAsFactors = FALSE)
@@ -47,18 +54,117 @@ phenotypes %>% str()
 
 ## **Understanding the Components of the Data**
 
+### **Phenotypes**
+
+```{r}
+phenotypes %>% 
+  dim()
+```
+```{r}
+phenotypes %>% 
+  names()
+```
+All phenotypes appear to be be normally distributed between -3 and 3.
+
+```{r}
+plot_list <- vector('list', 5)
+names(plot_list) <- names(phenotypes)
+
+for (phenotype in names(phenotypes)) {
+  plot_list[[phenotype]] <-
+    phenotypes %>%  
+      ggplot() + 
+      geom_histogram(aes_string(x = phenotype), 
+                     color = 'black', 
+                     fill = 'skyblue') + 
+    xlab('') + ylab('Frequency') + 
+    ggtitle(phenotype)
+}
+
+(plot_list[[1]] + plot_list[[2]]) / 
+  (plot_list[[3]] + plot_list[[4]] + plot_list[[5]])
+```
+
+
+### **Gene / Phenotype Information**
+
+Below we see the gene information of the 5 phenotypes encoded in our file
+
+```{r}
+gene_info %>% 
+  kable()
+```
+
 ### **What Genotypes are Present?**
 
-**Are there 2 or 3 types present?**
+Below we see that we have **50,000** genotype markers for each of our **344** individuals.
+
+```{r}
+genotypes %>% 
+  dim()
+```
 
 **How are gentoypes coded?**
 
+Lets observe one genotype across the individuals to understand the encoding. We see below that the genoypes are encoded with 0,1 and 2, which in this case indicate the **number of minor alleles** for this genotpe, for each individual
+
+```{r}
+genotypes$rs10399749 %>% 
+  table()
+```
+
+
+We can then convert this encoding to our standard $X_a$ and $X_d$ encodings (additive and dominant genetic codings) in the following way.
+
+```{r}
+Xa <- as.data.frame(genotypes) - 1
+Xd <- 1 - 2*abs(Xa)
+```
+
+### **SNP Info**
+
+```{r}
+snp_info %>% 
+  head() %>% 
+  kable()
+```
+
+```{r}
+snp_info %>% 
+  .$chromosome %>% 
+  unique()
+```
+
+### **Covariate Information**
+
+Below, we see that 2 covariates were measured in this study.
+
+```{r}
+covars %>% 
+  dim()
+```
+
+```{r}
+covars %>% 
+  head() %>% 
+  kable()
+```
+
+
 ### **What Phenotypes are Present?**
+
+It appears that we are dealing with **5** phenotypes from **344** individuals
+
+```{r}
+phenotypes %>% 
+  dim()
+```
 
 **How are the phenotypes coded?** -- discrete vs continuous
 
-### **What Covariates are Present?**
+The phenotypes are coninuous in this case, 
 
+### **What Covariates are Present?**
 
 ## **Checking the Phenotype Data**
 
@@ -72,35 +178,29 @@ phenotypes %>% str()
 
 **Remove individuals missing the phenotypes of interest**
 
-
-
 ## **Check and Filter Genotype Data**
 
-Filter genotypes: 
+Filter genotypes:
 
-* Remove **individuals** with more than 10% missing data across all genotypes
-* Remove **genotypes** with more than 5% missing data across all individuals.
-* Remove **genotypes** with an MAF less than 5%
-* Remove individuals that fail a test of Hardy-Weinberg equilibirum
+-   Remove **individuals** with more than 10% missing data across all genotypes
+-   Remove **genotypes** with more than 5% missing data across all individuals.
+-   Remove **genotypes** with an MAF less than 5%
+-   Remove individuals that fail a test of Hardy-Weinberg equilibirum
 
 ### **Principle Components Analysis**
 
 **test for population structure** -- clusters of individuals by genotype?
 
-
 ## **Performing GWAS**
-
 
 ## **GWAS Diagnositcs**
 
-For **each** phenotype (5 present here), 
+For **each** phenotype (5 present here),
 
-* Perform an association analysis considering the associates of **each** marker **one at a time**
-* Check the **QQ Plots** for each individual GWAS analysis to ensure that the p-value distribution is close to uniform, meaning we have captured all necessary covariates, as well as have **a few** very significant p-values
+-   Perform an association analysis considering the associates of **each** marker **one at a time**
+-   Check the **QQ Plots** for each individual GWAS analysis to ensure that the p-value distribution is close to uniform, meaning we have captured all necessary covariates, as well as have **a few** very significant p-values
 
 ### **Comparing Hits Between GWAS Analyses**
-
-
 
 ## **Final Analysis Presentation**
 
@@ -115,35 +215,3 @@ For **each** phenotype (5 present here),
 ### **Biological Support of Found Hits**
 
 **Literature Review / GeneCards**
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
