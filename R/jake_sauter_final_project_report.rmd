@@ -1,0 +1,149 @@
+---
+title: "GWAS Final Report"
+author: "Jake Sauter"
+date: "4/29/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, 
+                      warning = FALSE,
+                      message = FALSE,
+                      comment = NA)
+```
+
+**Libraries Used**
+
+```{r}
+library(dplyr)
+library(magrittr)
+```
+
+
+## **Loading Data**
+
+```{r}
+data_path <- '../data/'
+
+covars     <- read.csv(file.path(data_path, 'covars.csv'))
+snp_info   <- read.csv(file.path(data_path, 'SNP_info.csv'))
+gene_info  <- read.csv(file.path(data_path, 'gene_info.csv'))
+genotypes  <- read.csv(file.path(data_path, 'genotypes.csv'), 
+                       row.names = 1, header = TRUE, 
+                       stringsAsFactors = FALSE)
+phenotypes <- read.csv(file.path(data_path, 'phenotypes.csv'), 
+                       row.names = 1, header = TRUE, 
+                       stringsAsFactors = FALSE)
+```
+
+```{r}
+covars     %>% str()
+snp_info   %>% str()
+gene_info  %>% str()
+genotypes  %>% str()
+phenotypes %>% str()
+```
+
+
+## **Understanding the Components of the Data**
+
+### **What Genotypes are Present?**
+
+**Are there 2 or 3 types present?**
+
+**How are gentoypes coded?**
+
+### **What Phenotypes are Present?**
+
+**How are the phenotypes coded?** -- discrete vs continuous
+
+### **What Covariates are Present?**
+
+
+## **Checking the Phenotype Data**
+
+### **Phenotype Histograms**
+
+**Does this conform to our expectation?**
+
+**This will determine the analysis techniuqes used** -- if not normal, might want to be transformed to normal
+
+### **Checking for Odd Phenotype Values**
+
+**Remove individuals missing the phenotypes of interest**
+
+
+
+## **Check and Filter Genotype Data**
+
+Filter genotypes: 
+
+* Remove **individuals** with more than 10% missing data across all genotypes
+* Remove **genotypes** with more than 5% missing data across all individuals.
+* Remove **genotypes** with an MAF less than 5%
+* Remove individuals that fail a test of Hardy-Weinberg equilibirum
+
+### **Principle Components Analysis**
+
+**test for population structure** -- clusters of individuals by genotype?
+
+
+## **Performing GWAS**
+
+
+## **GWAS Diagnositcs**
+
+For **each** phenotype (5 present here), 
+
+* Perform an association analysis considering the associates of **each** marker **one at a time**
+* Check the **QQ Plots** for each individual GWAS analysis to ensure that the p-value distribution is close to uniform, meaning we have captured all necessary covariates, as well as have **a few** very significant p-values
+
+### **Comparing Hits Between GWAS Analyses**
+
+
+
+## **Final Analysis Presentation**
+
+### **List all steps and methods**
+
+### **Manhattan Plots**
+
+### **QQ Plots**
+
+### **Presenting Hits**
+
+### **Biological Support of Found Hits**
+
+**Literature Review / GeneCards**
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

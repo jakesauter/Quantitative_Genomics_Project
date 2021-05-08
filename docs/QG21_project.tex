@@ -1,0 +1,104 @@
+\documentclass[letterpaper, 11pt]{article}
+\usepackage{geometry}
+\usepackage{graphicx}
+\usepackage{amssymb}
+\usepackage{epstopdf}
+\usepackage{setspace}
+\usepackage{paralist}
+\usepackage{amsmath}
+\usepackage{epsfig,psfrag}
+\usepackage{moreverb}
+\usepackage{hyperref}
+\usepackage{color}
+
+
+
+\renewcommand{\labelenumi}{(\theenumi)}
+
+\pdfpagewidth 8.5in
+\pdfpageheight 11in
+
+\setlength\topmargin{0in}
+\setlength\leftmargin{0in}
+\setlength\headheight{0in}
+\setlength\headsep{0in}
+\setlength\textheight{9in}
+\setlength\textwidth{6.5in}
+\setlength\oddsidemargin{0in}
+\setlength\evensidemargin{0in}
+\setlength\parindent{0in}
+\setlength\parskip{0.13in} 
+ 
+\title{BTRY 4830/6830 \& PBSB.5201.01 \\
+Quantitative Genomics and Genetics Spring 2021
+}
+\author{Project - posted April 28}
+\date{Posted April 28; Due 11:59PM May 14 }   
+\begin{document}
+
+\vspace{-20in}
+
+\maketitle
+
+\section{Introduction and instructions}
+
+The goal of the class project is for you to demonstrate what you have learned by performing a GWAS analysis on real data. To accomplish this, assume that you have been provided data by a collaborator who wants to identify positions of causal polymorphisms (loci). You will perform an in-depth analysis and write a report for your collaborator that explains your methods and results.\\
+\\
+\textit{Instructions:} While we provide some general guidelines for how to proceed below, the techniques you use to analyze the data and how you construct your report will be up to you. Do however note the following instructions (PLEASE READ THESE CAREFULLY!!):
+\begin{enumerate}
+\item Your project must be uploaded by 11:59PM, May 14 - if it is late for any reason, standard grading policies apply.
+\item You are allowed to work together with other students in the class to analyze these data.  However, note that turning in a report that describes exactly the same analyses as a fellow student is not a good strategy for getting a good grade.  Also note that you must write your own report.
+\item This is an `open book' assignment, such that you are allowed to use any resources online, in books, etc.  You may also ask third-party (i.e. people not in the class) for suggestions on what analyses to perform but you cannot have a third-party do any of the analyses (or write any code for you!).
+\item You are also allowed to use any software or programming language that you would like as part of your analysis.  However, we expect that some of the tasks will be performed in R (also note that you are welcome to use any packages, functions, etc. in R).
+\item Your final project will include at most three files a SINGLE report file (ideally a .pdf), a SINGLE file including all of your R code (ideally an .rmd file!) and / or commands or scripts you used to run other software packages, and IF YOU WANT a SINGLE, a pdf or html conversion of your .rmd.   That is, for your R code, the best way to maximize your grade is to have well commented code that we can run from the command line.  If you use other software for some of the tasks, a reasonable approach is to include commented out descriptions in your code that provides details on how you ran the software, e.g. what parameters did you use, etc. 
+\item The report file must be no more than 8 pages (single-sided), with NO MORE than 5 pages of text and NO MORE than 3 pages of figures / tables.  
+\item For your report, you must describe what you did in detail (a good guide is have you provided enough detail such that someone reading your report could replicate what you have done?).  You also need to describe the results you have obtained from your analysis.  You may also wish to include some text to describe interpretations and conclusions that may be of interest to your collaborator, including statistical and possibly, biological interpretations.  For your Figures and Tables, note that clarity and clear labels is a strategy for maximizing your grade.
+\item We will grade on two broad criteria: 1. the overall quality of the analyses / report, 2. the amount of effort put into your project.  Note that `effort' does not mean run many analyses without thinking carefully about why you are running them or how they fit together to provide a clear picture of results.  A guide maximizing your grade on effort is to think carefully about how to produce the best possible report that you can and then put in as many hours as you wish to devote to the project accomplishing this objective (your effort level will be clear to us).  
+\end{enumerate}
+
+\section{The experiment and data}
+
+\textbf{The experiment:}  Among the recent large scale human genomics resources is Genetic European Variation in Health and Disease (gEUVADIS) - see the following links for relevant descriptions and information:\\
+\\
+\url{http://www.internationalgenome.org/data-portal/data-collection/geuvadis/}\\
+\\
+\url{https://www.nature.com/articles/nature12531}\\
+\\
+with a samples from 4 different European populations (5 populations total). Each of these individuals were part of the 1000 Genomes project and their genomes were sequenced and analyzed to identify SNP geno- types. For expression profiling, lympoblastoid cell lines (LCL) were generated from each sample and mRNA levels were quantified through RNA sequencing.\\
+\\
+Each of these gene expression measurements may be thought of as a phenotype and one can do a GWAS analysis on each individually, which is called an `expression Quantitative Trait Locus' or `eQTL' analysis, an unnecessarily fancy name for a GWAS when the phenotype is gene expression!\\
+\\
+What you have been provided is a small subset of these data that are publicly available. Specifically, you have been provided 50,000 of the SNP genotypes for 344 samples from the CEU (Utah residents with European ancestry), FIN (Finns), GBR (British) and, TSI (Toscani) population. For these same individuals, you have also been provided the expression levels of five genes. You have also been provided information on the population and gender of each of these individuals, and information regarding the position of each gene and SNP in the genome. 
+\\
+\\
+\textbf{The data:}  These have been provided to you in five total files: `phenotypes.csv',`genotypes.csv', `covars.csv', `gene\_info.csv',`SNP\_info.csv'.\\
+\\
+`phenotypes.csv' contains the phenotype data for 344 samples and 5 genes.\\
+\\
+`genotypes.csv' contains the SNP data for 344 samples and 50000 genotypes.\\
+\\
+`covars.csv' contains the population origin and gender information for the 344 samples.\\
+\\
+`gene\_info.csv' contains information about each gene that was measured. The `chromosome' column indicates the chromosome where the gene is located, `start' marks the position in the chromosome where the region of the gene begins and `end' marks the position where the region ends, `symbol' contains the common gene name of the measured transcript and `probe' contains the ids of the transcripts that match with the column names of the phenotype data.\\
+\\
+`SNP\_info.csv' contains the additional information on the genotypes and has four columns. The 1st column contains the chromosome number of each SNP, the 2nd column contains the physical position of the SNP on the chromosome, the 3rd column contains the abbreviation used to the `rsID' = the name of each SNP in order.
+
+\section{Your assignment and hints for getting started}
+
+Your GWAS assignment is to find the position of as many causal polymorphisms as possible for the five expressed genes using the data (note that each `hit' will potentially indicate an eQTL). You may / should use any and as many analysis approaches as you think that are useful to accomplish this goal. In your report, you will need to describe in detail what you did, why you did it, and describe results in a manner that your `non-statistical' collaborator will be able to understand, e.g. explain your terms, provide interpretations, etc.
+
+A few hints:
+\begin{itemize}
+	\item Apply the applicable steps of a `minimum GWAS' analysis.
+	\item In your report, justify why you applied each individual step and statistical approach.
+	\item In your report, provide a summary of your results and what they mean.
+	\item You may want to consider going to various resources online (e.g. genecards, UCSC genome browser, dbSNP, many others) to incorporate biological information into your interpretation and hypotheses concerning what you may have found.
+	\item Ask Scott, Beulah, and Jason for thoughts and ideas!
+\end{itemize}
+
+Good luck!
+
+\end{document}
+
+
+
