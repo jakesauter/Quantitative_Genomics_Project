@@ -2,7 +2,12 @@
 title: "GWAS Final Report"
 author: "Jake Sauter"
 date: "4/29/2021"
-output: html_document
+output: 
+  html_document: 
+    toc: true
+    toc_float: true
+  pdf_document:
+    toc: true
 ---
 
 ```{r setup, include=FALSE}
@@ -290,7 +295,8 @@ perform_gwas_no_covs <- function(genotypes, phenotype) {
 ```{r}
 gwas_no_covs_results <- 
   lapply(seq_len(ncol(phenotypes)), 
-        function(i) perform_gwas_no_covs(genotypes, phenotypes[,i]))
+        function(i) perform_gwas_no_covs(genotypes, phenotypes[,i])) %>% 
+  set_names(colnames(phenotypes))
 ```
 
 
@@ -316,7 +322,7 @@ for (i in seq_along(plot_list)) {
 ### **QQ Plots**
 
 ```{r}
-plot_uniform_qq <- function(p_values) {
+plot_uniform_qq <- function(p_values, pheno_name) {
   
   uniform_quantiles <- 
     qunif(ppoints(length(p_values)))
@@ -332,16 +338,22 @@ plot_uniform_qq <- function(p_values) {
                   color="red", 
                   lty = 2) + 
       xlab('-log10(Uniform Quantiles)') +
-      ylab('-log10(P Values)')
+      ylab('-log10(P Values)') + 
+      ggtitle(pheno_name)
     
   p
 }
 ```
 
 ```{r}
-plot_list <- lapply(gwas_no_covs_results, 
-                    function(gwas_res) 
-                      plot_uniform_qq(gwas_res))
+phenotype_names <- names(gwas_no_covs_results)
+
+plot_list <- 
+  lapply(seq_along(gwas_no_covs_results), 
+        function(i) {
+          plot_uniform_qq(gwas_no_covs_results[[i]], 
+                          phenotype_names[[i]])
+        })
 
 (plot_list[[1]] + plot_list[[2]]) / 
   (plot_list[[3]] + plot_list[[4]] + plot_list[[5]])
@@ -400,7 +412,7 @@ perform_gwas_with_covs <- function(genotypes, phenotype) {
       function(genotype) {
         model <- lm(phenotype ~ Xa[,genotype] + 
                                 Xd[,genotype] + 
-                                covars$Population + 
+                                covars$Population +
                                 covars$Sex)
         
         p_val <-
@@ -421,7 +433,8 @@ perform_gwas_with_covs <- function(genotypes, phenotype) {
 ```{r}
 gwas_with_covs_results <- 
   lapply(seq_len(ncol(phenotypes)), 
-        function(i) perform_gwas_with_covs(genotypes, phenotypes[,i]))
+        function(i) perform_gwas_with_covs(genotypes, phenotypes[,i])) %>% 
+  set_names(colnames(phenotypes))
 ```
 
 
@@ -447,16 +460,20 @@ for (i in seq_along(plot_list)) {
 ### **QQ Plots**
 
 ```{r}
-plot_list <- lapply(gwas_with_covs_results, 
-                    function(gwas_res) 
-                      plot_uniform_qq(gwas_res))
+phenotype_names <- names(gwas_with_covs_results)
+
+plot_list <- 
+  lapply(seq_along(gwas_with_covs_results), 
+        function(i) {
+          plot_uniform_qq(gwas_with_covs_results[[i]], 
+                          phenotype_names[[i]])
+        })
 
 (plot_list[[1]] + plot_list[[2]]) / 
   (plot_list[[3]] + plot_list[[4]] + plot_list[[5]])
 ```
 
 ### **Manhattain Plots**
-
 
 ```{r}
 plot_list <- lapply(gwas_with_covs_results, 
