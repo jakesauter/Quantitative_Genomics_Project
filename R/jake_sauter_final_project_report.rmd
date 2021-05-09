@@ -138,6 +138,11 @@ snp_info %>%
 Below, we see that 2 covariates were measured in this study, **Population** and **Sex**. 
 
 ```{r}
+covars <- 
+  read.csv(file.path(data_path, 
+                     'covars.csv'), 
+            row.names = 1)
+
 covars %>% 
   head() %>% 
   kable()
@@ -196,39 +201,44 @@ phenotypes %>%
   summary()
 ```
 
-**TODO: Remove individuals missing the phenotypes of interest**?
-
-**TODO: Show that all of these conditions are met aleady**
-
 ## **Check and Filter Genotype Data**
+
+### **Data Quality Checks**
 
 Filter genotypes:
 
-
 -  Remove **individuals** with more than 10% missing data across all genotypes
-
-```{r}
-
-
-```
-
 
 -   Remove **genotypes** with more than 5% missing data across all individuals.
 
-
 -   Remove **genotypes** with an MAF less than 5%
 
-**TODO: might actually have to filter by MAF**
+From the information below, we can see that no genotypes with an MAF of less than 5% are present in our data.
 
+```{r}
+MAFs <- 
+  genotypes %>% 
+  apply(2, function(x) {
+    length(x[x > 0]) / length(x)
+  })
 
--   Remove individuals that fail a test of Hardy-Weinberg equilibirum
+MAFs %>% 
+  data.frame(MAF = .) %>% 
+  ggplot() + 
+    geom_histogram(aes(x = MAF), 
+                   color = 'black', 
+                   fill = 'skyblue') + 
+    xlab('Minor Allele Frequency') + 
+    ylab('Frequency')
 
+MAFs %>% 
+  .[. < 0.05] %>% 
+  length()
+```
 
-
+**TODO: Hardy-Weinburg Equilibrium?**
 
 ### **Principle Components Analysis**
-
-**test for population structure** -- clusters of individuals by genotype?
 
 ```{r}
 pca_result <- 
@@ -248,8 +258,9 @@ ggplot() +
                  shape = Sex)) 
 ```
 
+## **Performing GWAS Without Covariates**
 
-## **Performing GWAS**
+### **P-value Calculations**
 
 ```{r}
 perform_gwas_no_covs <- function(genotypes, phenotype) { 
@@ -277,13 +288,11 @@ perform_gwas_no_covs <- function(genotypes, phenotype) {
 ```
 
 ```{r}
-gwas_no_cov_results <- 
+gwas_no_covs_results <- 
   lapply(seq_len(ncol(phenotypes)), 
         function(i) perform_gwas_no_covs(genotypes, phenotypes[,i]))
 ```
 
-
-## **GWAS Diagnositcs**
 
 ### **P-value Distributions**
 
@@ -292,7 +301,7 @@ plot_list <- vector('list', 5)
 
 for (i in seq_along(plot_list)) {
   plot_list[[i]] <- 
-    all_gwas_results[[i]] %>% 
+    gwas_no_covs_results[[i]] %>% 
       data.frame(p_values = .) %>% 
       ggplot() + 
         geom_histogram(aes(x = p_values)) + 
@@ -330,7 +339,7 @@ plot_uniform_qq <- function(p_values) {
 ```
 
 ```{r}
-plot_list <- lapply(all_gwas_results, 
+plot_list <- lapply(gwas_no_covs_results, 
                     function(gwas_res) 
                       plot_uniform_qq(gwas_res))
 
@@ -338,26 +347,128 @@ plot_list <- lapply(all_gwas_results,
   (plot_list[[3]] + plot_list[[4]] + plot_list[[5]])
 ```
 
+### **Manhattain Plots**
+
+```{r}
+plot_manhattan <- function(p_values) {
+  
+  n_genotypes <- ncol(genotypes)
+  
+  df <- 
+    data.frame(
+      genotype = seq(1, n_genotypes), 
+      pval = p_values) %>% 
+    mutate(plot_pval = -log10(pval))
+  
+  
+  p <- 
+    df %>% 
+    ggplot() + 
+    geom_point(aes(x = genotype, y = plot_pval), 
+               col = 'skyblue') +
+    geom_hline(aes(yintercept = -log10(0.05 / n_genotypes),
+               color = 'red'), lty = 2, lwd = 1.1) +
+    xlab('Genotype (SNP)') + ylab('-log10(p value)') +
+    theme(legend.position = 'none', 
+          axis.text.x = element_text(angle = -30))
+  
+  p
+}
+```
 
 
+```{r}
+plot_list <- lapply(gwas_no_covs_results, 
+                    function(gwas_res) 
+                      plot_manhattan(gwas_res))
 
-For **each** phenotype (5 present here),
+(plot_list[[1]] + plot_list[[2]]) / 
+  (plot_list[[3]] + plot_list[[4]] + plot_list[[5]])
 
--   Perform an association analysis considering the associates of **each** marker **one at a time**
--   Check the **QQ Plots** for each individual GWAS analysis to ensure that the p-value distribution is close to uniform, meaning we have captured all necessary covariates, as well as have **a few** very significant p-values
+```
 
-### **Comparing Hits Between GWAS Analyses**
+## **Performing GWAS With Covariates**
 
-## **Final Analysis Presentation**
+### **P-value Calculations**
 
-### **List all steps and methods**
+```{r}
+perform_gwas_with_covs <- function(genotypes, phenotype) { 
+  n_genotypes <- ncol(genotypes)
+  
+  gwas_results <- 
+    mclapply(seq_len(n_genotypes), 
+      function(genotype) {
+        model <- lm(phenotype ~ Xa[,genotype] + 
+                                Xd[,genotype] + 
+                                covars$Population + 
+                                covars$Sex)
+        
+        p_val <-
+          summary(model) %>% 
+          .$fstatistic %>% 
+          {pf(.[1], .[2], .[3], 
+              lower.tail = FALSE)} %>% 
+          unname()
+        
+        names(p_val) <- genotype
+        p_val
+      }, mc.cores = 10)
+  
+  unlist(gwas_results)
+}
+```
 
-### **Manhattan Plots**
+```{r}
+gwas_with_covs_results <- 
+  lapply(seq_len(ncol(phenotypes)), 
+        function(i) perform_gwas_with_covs(genotypes, phenotypes[,i]))
+```
+
+
+### **P-value Distributions**
+
+```{r}
+plot_list <- vector('list', 5)
+
+for (i in seq_along(plot_list)) {
+  plot_list[[i]] <- 
+    gwas_with_covs_results[[i]] %>% 
+      data.frame(p_values = .) %>% 
+      ggplot() + 
+        geom_histogram(aes(x = p_values)) + 
+        xlab('P Value') + ylab('Frequency')
+}
+
+(plot_list[[1]] + plot_list[[2]]) / 
+  (plot_list[[3]] + plot_list[[4]] + plot_list[[5]])
+```
+
 
 ### **QQ Plots**
 
-### **Presenting Hits**
+```{r}
+plot_list <- lapply(gwas_with_covs_results, 
+                    function(gwas_res) 
+                      plot_uniform_qq(gwas_res))
 
-### **Biological Support of Found Hits**
+(plot_list[[1]] + plot_list[[2]]) / 
+  (plot_list[[3]] + plot_list[[4]] + plot_list[[5]])
+```
+
+### **Manhattain Plots**
+
+
+```{r}
+plot_list <- lapply(gwas_with_covs_results, 
+                    function(gwas_res) 
+                      plot_manhattan(gwas_res))
+
+(plot_list[[1]] + plot_list[[2]]) / 
+  (plot_list[[3]] + plot_list[[4]] + plot_list[[5]])
+
+```
+
+
+## **Biological Support of Found Hits**
 
 **Literature Review / GeneCards**
