@@ -26,6 +26,7 @@ library(ggplot2)
 library(parallel)
 library(magrittr)
 library(patchwork)
+library(kableExtra)
 ```
 
 ```{r, include = FALSE}
@@ -83,7 +84,9 @@ The phenotype data for this study has been provided in a relatively common and e
 ```{r}
 phenotypes %>% 
   head() %>% 
-  kable()
+  kable(caption = 'Example rows of the phenotype data for six individuals in this study.') %>% 
+  kable_styling(font_size = 10, 
+                latex_options = c('hold_position'))
 ```
 
 
@@ -94,7 +97,9 @@ Below we see that we have **50,000** genotype markers for each of our **344** in
 ```{r}
 genotypes %>% 
   .[1:3, 1:5] %>% 
-  kable()
+  kable(caption = 'Example rows and columns of the genotype data for five genotypes and three individuals. ') %>% 
+  kable_styling(font_size = 10, 
+                latex_options = c('hold_position'))
 ```
 
 We can now convert this encoding to our standard $X_a$ and $X_d$ encodings (additive and dominant genetic codings) in the following way.
@@ -112,61 +117,64 @@ Covariates of **Population** and **Sex** were measured in this study. In this re
 An important aspect of including covariates while modelling is ensuring a stable and informative model. Practially, this required a sufficient sample size per covariate-defined population. Below we see that each covariate controlled population has over **30** samples, indicating that we should have enough data/information here in order to control for both covariates with introducing non-robust model characteristics.
 
 ```{r}
-covars %>% 
-  count(Population, Sex) %>% 
-  rename('Num. Observed' = n) %>% 
-  kable()
+covars %>%
+  count(Population, Sex) %>%
+  rename('Num. Observed' = n) %>%
+  kable(caption = 'Count of individuals in the study divided by the covariates of population and sex.') %>%
+  kable_styling(font_size = 10, 
+                latex_options = c('hold_position'))
 ```
 
 
 ## **Phenotype Data Quality Control**
 
-From the information above, it is clear that we will be working with **5** phenotypes from **344** individuals, each phenotype describing the continuous variable of mRNA expression of the genes of interest. No missing values were identified in the phenotype data, and all phenotypes appear to be be normally distributed between -3 and 3. This fits our expection of Normality in GWAS. 
+From the information above, it is clear that we will be working with **5** phenotypes from **344** individuals, each phenotype describing the continuous variable of mRNA expression of the genes of interest. No missing values were identified in the phenotype data, and all phenotypes appear to be be normally distributed between -3 and 3. This fits our expection of Normality in GWAS.
 
-```{r, fig.height = 3.5}
+```{r, fig.height = 3.5, fig.cap="TODO: Add caption here"}
 plot_list <- vector('list', 5)
 names(plot_list) <- names(phenotypes)
 
 for (phenotype in names(phenotypes)) {
   plot_list[[phenotype]] <-
-    phenotypes %>%  
-      ggplot() + 
-      geom_histogram(aes_string(x = phenotype), 
-                     color = 'black', 
-                     fill = 'skyblue') + 
-    xlab('') + ylab('Frequency') + 
-    ggtitle(phenotype)
+    phenotypes %>%
+      ggplot() +
+      geom_histogram(aes_string(x = phenotype),
+                     color = 'black',
+                     fill = 'skyblue') +
+    xlab('') + ylab('Frequency') +
+    ggtitle(phenotype) 
 }
 
-(plot_list[[1]] + plot_list[[2]]) / 
+(plot_list[[1]] + plot_list[[2]]) /
   (plot_list[[3]] + plot_list[[4]] + plot_list[[5]])
 ```
+
 
 
 ## **Genotype Data Quality Control**
 
 Common techniques used to filter GWAS study data usually include removing **individuals** with more than 10% missing data across all genotypes, removing **genotypes** with more than 5% missing data across all individuals, and removing **genotypes** with an MAF less than 5%. No missing values were identified in the gentoype data, thus the first two points are satisfied. From the histogram below, we can see that no genotypes with an MAF of less than 5% are present in our data.
 
-```{r, fig.height = 2}
-MAFs <- 
-  genotypes %>% 
+```{r, fig.height = 2, fig.cap="TODO: Add caption here"}
+MAFs <-
+  genotypes %>%
   apply(2, function(x) {
     length(x[x > 0]) / length(x)
   })
 
-MAFs %>% 
-  data.frame(MAF = .) %>% 
-  ggplot() + 
-    geom_histogram(aes(x = MAF), 
-                   color = 'black', 
-                   fill = 'skyblue') + 
-    geom_vline(aes(xintercept = 0.05, 
-                   color = 'red_dotted_line'), 
-               lty = 2)  + 
-    xlab('Minor Allele Frequency') + 
-    ylab('Frequency') + 
-    scale_color_manual(values = c('red_dotted_line' = 'red'), 
-                       labels = c('MAF = 5%')) + 
+MAFs %>%
+  data.frame(MAF = .) %>%
+  ggplot() +
+    geom_histogram(aes(x = MAF),
+                   color = 'black',
+                   fill = 'skyblue') +
+    geom_vline(aes(xintercept = 0.05,
+                   color = 'red_dotted_line'),
+               lty = 2)  +
+    xlab('Minor Allele Frequency') +
+    ylab('Frequency') +
+    scale_color_manual(values = c('red_dotted_line' = 'red'),
+                       labels = c('MAF = 5%')) +
   theme(legend.title = element_blank())
 ```
 
@@ -177,41 +185,58 @@ In order to understand if any other population structure exists in the data othe
 Below we see that **CEU** and **TSI** populations are fairly uniform, and slight seperation is seen in both **FIN** and **GBR**. Both of these observed sub-populations do not seem to be extreme or due to the sex of the individual (indicated by the color of the points).
 
 ```{r}
-unique_populations <- 
-  covars$Population %>% 
+unique_populations <-
+  covars$Population %>%
   unique()
-  
+
 pca_results <- vector('list', 4)
 
 for (i in seq_along(unique_populations)) {
   population <- unique_populations[i]
-  pca_results[[i]] <-
-    prcomp(genotypes[covars$Population == population, ], 
-           center = TRUE)
+
+  pop_data <-
+    genotypes %>%
+    .[covars$Population == population, ]
+
+  ## Remove constant / zero columns as to not cause a
+  # problem with the scale. parameter below
+  keep_cols <-
+    pop_data %>%
+    apply(2, function(x) {
+      if (near(var(x), 0)) return(FALSE)
+      TRUE
+    })
+
+  pop_data <-
+    pop_data[, keep_cols]
+
+  pca_results[[i]]<-
+    prcomp(pop_data,
+           center = TRUE,
+           scale. = TRUE)
 }
 ```
 
-```{r}
+```{r, fig.cap="TODO: Add caption here"}
 plot_list <- vector('list', 5)
 names(plot_list) <- unique_populations
 
 for (i in seq_along(unique_populations)) {
   population <- unique_populations[i]
-  
-  plot_list[[i]] <- 
-    data.frame(PC1 = pca_results[[i]]$x[, 1], 
-               PC2 = pca_results[[i]]$x[, 2], 
-               Sex = covars[covars$Population == population, 'Sex']) %>% 
-    ggplot() + 
-      geom_point(aes(x = PC1, y = PC2, 
+
+  plot_list[[i]] <-
+    data.frame(PC1 = pca_results[[i]]$x[, 1],
+               PC2 = pca_results[[i]]$x[, 2],
+               Sex = covars[covars$Population == population, 'Sex']) %>%
+    ggplot() +
+      geom_point(aes(x = PC1, y = PC2,
                      color = Sex)) +
-    ggtitle(population) + 
+    ggtitle(population) +
     theme(legend.position = 'none')
 }
 
 (plot_list[[1]] + plot_list[[2]]) /
-  (plot_list[[3]] + plot_list[[4]])
-
+  (plot_list[[3]] + plot_list[[4]]) 
 ```
 
 ## **Performing GWAS Without Covariates**
@@ -221,38 +246,38 @@ where $\epsilon ~ N(0, \sigma^2)$. The models were fit using the `lm()` function
 
 
 ```{r}
-perform_gwas_no_covs <- function(genotypes, phenotype) { 
+perform_gwas_no_covs <- function(genotypes, phenotype) {
   n_genotypes <- ncol(genotypes)
-  
-  gwas_results <- 
-    mclapply(seq_len(n_genotypes), 
+
+  gwas_results <-
+    mclapply(seq_len(n_genotypes),
       function(genotype) {
-        model <- lm(phenotype ~ Xa[,genotype] + 
+        model <- lm(phenotype ~ Xa[,genotype] +
                                 Xd[,genotype])
-        
+
         p_val <-
-          summary(model) %>% 
-          .$fstatistic %>% 
-          {pf(.[1], .[2], .[3], 
-              lower.tail = FALSE)} 
-      
-        names(p_val) <- 
+          summary(model) %>%
+          .$fstatistic %>%
+          {pf(.[1], .[2], .[3],
+              lower.tail = FALSE)}
+
+        names(p_val) <-
           colnames(genotypes)[genotype]
-        
+
         p_val
       }, mc.cores = 7)
-  
+
   unlist(gwas_results)
 }
 ```
 
 ```{r}
-gwas_no_covs_results <- 
-  lapply(seq_len(ncol(phenotypes)), 
+gwas_no_covs_results <-
+  lapply(seq_len(ncol(phenotypes)),
         function(i) {
-          perform_gwas_no_covs(genotypes, 
+          perform_gwas_no_covs(genotypes,
                                phenotypes[,i])
-   }) %>% 
+   }) %>%
   set_names(colnames(phenotypes))
 ```
 
@@ -263,39 +288,39 @@ In order to observe if the resultant ditribution of p-values for each GWAS is ap
 
 ```{r}
 plot_uniform_qq <- function(p_values, pheno_name) {
-  
-  uniform_quantiles <- 
+
+  uniform_quantiles <-
     qunif(ppoints(length(p_values)))
-  
-  p <- 
+
+  p <-
     data.frame(p_values          = sort(p_values),
-               uniform_quantiles = sort(uniform_quantiles)) %>% 
-    ggplot() + 
+               uniform_quantiles = sort(uniform_quantiles)) %>%
+    ggplot() +
       geom_point(aes(x = -log10(uniform_quantiles),
                      y = -log10(p_values))) +
-      geom_abline(intercept = 0, 
-                  slope = 1, 
-                  color="red", 
-                  lty = 2) + 
+      geom_abline(intercept = 0,
+                  slope = 1,
+                  color="red",
+                  lty = 2) +
       xlab('-log10(Uniform Quantiles)') +
-      ylab('-log10(P Values)') + 
+      ylab('-log10(P Values)') +
       ggtitle(pheno_name)
-    
+
   p
 }
 ```
 
-```{r, fig.height = 3}
+```{r, fig.height = 3, fig.cap="TODO: Add caption here"}
 phenotype_names <- names(gwas_no_covs_results)
 
-plot_list <- 
-  lapply(seq_along(gwas_no_covs_results), 
+plot_list <-
+  lapply(seq_along(gwas_no_covs_results),
         function(i) {
-          plot_uniform_qq(gwas_no_covs_results[[i]], 
+          plot_uniform_qq(gwas_no_covs_results[[i]],
                           phenotype_names[[i]])
         })
 
-(plot_list[[1]] + plot_list[[2]]) / 
+(plot_list[[1]] + plot_list[[2]]) /
   (plot_list[[3]] + plot_list[[4]] + plot_list[[5]])
 ```
 
@@ -305,89 +330,88 @@ To illistate the location and significance of the detected hits in the analyses 
 
 
 ```{r}
-plot_manhattan <- function(p_values, plot_title, 
+plot_manhattan <- function(p_values, plot_title,
                            start = NULL, end = NULL) {
-  
+
 
   ## Correlate p-values to genomic locations with snp_info
-  unique_chromosomes <- 
-    snp_info$chromosome %>% 
+  unique_chromosomes <-
+    snp_info$chromosome %>%
     unique()
-  
-  chromosome_offsets <- 
-    sapply(unique_chromosomes, 
+
+  chromosome_offsets <-
+    sapply(unique_chromosomes,
       function(chromosome) {
-        offset <- 
+        offset <-
           max(snp_info[snp_info['chromosome'] == chromosome,
                        'position'])
         names(offset) <- chromosome
         offset
     })
-  
+
   genomic_locations <-
-    snp_info[snp_info['id'] == names(p_values), ]  %>% 
-    mutate(position = 
-             if_else(chromosome == 1, 
-                     position, 
-                     position + sum(chromosome_offsets[1:chromosome-1]))) %>% 
+    snp_info[snp_info['id'] == names(p_values), ]  %>%
+    mutate(position =
+             if_else(chromosome == 1,
+                     position,
+                     position + sum(chromosome_offsets[1:chromosome-1]))) %>%
     .$position
-  
+
   n_genotypes <- length(p_values)
-  
-  df <- 
+
+  df <-
     data.frame(
-      genome_location = genomic_locations, 
-      pval = p_values) %>% 
+      genome_location = genomic_locations,
+      pval = p_values) %>%
     mutate(plot_pval = -log10(pval))
-  
-  # localizing manhattan plot to better show 
+
+  # localizing manhattan plot to better show
   # hits in the provided range
   if(!is.null(start) && !is.null(end)) {
-    df <- df %>% 
+    df <- df %>%
       filter(genome_location >= start &
              genome_location <= end)
-  } 
-  
-  
-  p <- 
-    df %>% 
-    ggplot() + 
-    geom_point(aes(x = genome_location, y = plot_pval), 
+  }
+
+
+  p <-
+    df %>%
+    ggplot() +
+    geom_point(aes(x = genome_location, y = plot_pval),
                col = 'skyblue', shape = 21) +
     geom_hline(aes(yintercept = -log10(0.05 / n_genotypes),
                color = 'red'), lty = 2, lwd = 1.1) +
     xlab('Genomic Location') + ylab('-log10(p value)') +
-    ggtitle(plot_title) + ylim(c(0, 90)) + 
-    scale_x_continuous(labels = function(x) format(x, scientific = TRUE)) + 
-    theme(legend.position = 'none', 
-          axis.text.x = element_text(angle = -30)) 
-  
+    ggtitle(plot_title) + ylim(c(0, 90)) +
+    scale_x_continuous(labels = function(x) format(x, scientific = TRUE)) +
+    theme(legend.position = 'none',
+          axis.text.x = element_text(angle = -30))
+
   p
 }
 ```
 
 
-```{r, fig.height = 3.5}
-plot_list <- 
-  lapply(seq_along(gwas_no_covs_results), 
+```{r, fig.height = 3.5, fig.cap="TODO: Add caption here"}
+plot_list <-
+  lapply(seq_along(gwas_no_covs_results),
       function(i) {
         gwas_result <- gwas_no_covs_results[[i]]
         plot_name <- names(gwas_no_covs_results)[[i]]
         plot_manhattan(gwas_result, plot_name)
     })
 
-(plot_list[[1]] + plot_list[[2]]) / 
+(plot_list[[1]] + plot_list[[2]]) /
   (plot_list[[3]] + plot_list[[4]] + plot_list[[5]])
-
 ```
 
 Of the three phenotypes that we have observed significant hits for, we will take a closer look at the local regions where the hits were found to be.
 
-```{r, fig.height = 2.5}
-plot_manhattan(gwas_no_covs_results[['ERAP2']], 
-               'ERAP2', 
-               start = 9.65e7, 
-               end = 9.725e7) + 
+```{r, fig.height = 2.5, fig.cap="TODO: Add caption here"}
+plot_manhattan(gwas_no_covs_results[['ERAP2']],
+               'ERAP2',
+               start = 9.65e7,
+               end = 9.725e7) +
 plot_manhattan(gwas_no_covs_results[['PEX6']],
                'PEX6',
                start = 4.27e7,
@@ -395,7 +419,7 @@ plot_manhattan(gwas_no_covs_results[['PEX6']],
 plot_manhattan(gwas_no_covs_results[['FAHD1']],
                'FAHD1',
                start = 1.35e6,
-               end = 2.2e6)
+               end = 2.2e6) 
 ```
 
 
@@ -405,37 +429,37 @@ We now perfrom the same five GWAS analyses **with** the inclusion of the collect
 where $\epsilon ~ N(0, \sigma^2)$. The models were fit similarly using the `lm()` function in the R programming language, followed by calculation of the p-value through the models F-statistic on a distribution with the appropriate degrees of freedom.
 
 ```{r}
-perform_gwas_with_covs <- function(genotypes, phenotype) { 
+perform_gwas_with_covs <- function(genotypes, phenotype) {
   n_genotypes <- ncol(genotypes)
-  
-  gwas_results <- 
-    mclapply(seq_len(n_genotypes), 
+
+  gwas_results <-
+    mclapply(seq_len(n_genotypes),
       function(genotype) {
-        model <- lm(phenotype ~ Xa[,genotype] + 
-                                Xd[,genotype] + 
-                                covars$Sex + 
+        model <- lm(phenotype ~ Xa[,genotype] +
+                                Xd[,genotype] +
+                                covars$Sex +
                                 covars$Population)
-        
+
         p_val <-
-          summary(model) %>% 
-          .$fstatistic %>% 
-          {pf(.[1], .[2], .[3], 
-              lower.tail = FALSE)} 
-      
-        names(p_val) <- 
+          summary(model) %>%
+          .$fstatistic %>%
+          {pf(.[1], .[2], .[3],
+              lower.tail = FALSE)}
+
+        names(p_val) <-
           colnames(genotypes)[genotype]
-        
+
         p_val
       }, mc.cores = 7)
-  
+
   unlist(gwas_results)
 }
 ```
 
 ```{r}
-gwas_with_covs_results <- 
-  lapply(seq_len(ncol(phenotypes)), 
-        function(i) perform_gwas_with_covs(genotypes, phenotypes[,i])) %>% 
+gwas_with_covs_results <-
+  lapply(seq_len(ncol(phenotypes)),
+        function(i) perform_gwas_with_covs(genotypes, phenotypes[,i])) %>%
   set_names(colnames(phenotypes))
 ```
 
@@ -444,17 +468,17 @@ gwas_with_covs_results <-
 
 In order to observe if the resultant ditribution of p-values for each GWAS is approximately normal, as we would expect under $H_0$, we produce a Quantile-Quantile plot comparing the quantiles of the p-value distribution with that of a uniform distribution.
 
-```{r, fig.height = 3}
+```{r, fig.height = 3, fig.cap="TODO: Add caption here"}
 phenotype_names <- names(gwas_with_covs_results)
 
-plot_list <- 
-  lapply(seq_along(gwas_with_covs_results), 
+plot_list <-
+  lapply(seq_along(gwas_with_covs_results),
         function(i) {
-          plot_uniform_qq(gwas_with_covs_results[[i]], 
+          plot_uniform_qq(gwas_with_covs_results[[i]],
                           phenotype_names[[i]])
         })
 
-(plot_list[[1]] + plot_list[[2]]) / 
+(plot_list[[1]] + plot_list[[2]]) /
   (plot_list[[3]] + plot_list[[4]] + plot_list[[5]])
 ```
 
@@ -462,27 +486,26 @@ plot_list <-
 
 To illistate the location and significance of the detected hits in the analyses perform, we plot the $-log_{10}(pvalue)$ of each genotype at the position where the genotype is found in the human genome.
 
-```{r, fig.height = 3.5}
-plot_list <- 
-  lapply(seq_along(gwas_with_covs_results), 
+```{r, fig.height = 3.5, fig.cap="TODO: Add caption here"}
+plot_list <-
+  lapply(seq_along(gwas_with_covs_results),
       function(i) {
         gwas_result <- gwas_with_covs_results[[i]]
         plot_name <- names(gwas_with_covs_results)[[i]]
         plot_manhattan(gwas_result, plot_name)
     })
 
-(plot_list[[1]] + plot_list[[2]]) / 
-  (plot_list[[3]] + plot_list[[4]] + plot_list[[5]])
-
+(plot_list[[1]] + plot_list[[2]]) /
+  (plot_list[[3]] + plot_list[[4]] + plot_list[[5]]) 
 ```
 
 Of the three phenotypes that we have observed significant hits for, we will take a closer look at the local regions where the hits were found to be. We see below that we have found the same hits with and without covariates included in our model.
 
-```{r, fig.height = 2.5}
-plot_manhattan(gwas_with_covs_results[['ERAP2']], 
-               'ERAP2', 
-               start = 9.65e7, 
-               end = 9.725e7) + 
+```{r, fig.height = 2.5, fig.cap="TODO: Add caption here"}
+plot_manhattan(gwas_with_covs_results[['ERAP2']],
+               'ERAP2',
+               start = 9.65e7,
+               end = 9.725e7) +
 plot_manhattan(gwas_with_covs_results[['PEX6']],
                'PEX6',
                start = 4.27e7,
@@ -492,6 +515,9 @@ plot_manhattan(gwas_with_covs_results[['FAHD1']],
                start = 1.35e6,
                end = 2.2e6)
 ```
+
+\newpage
+
 
 ## **Table of Most Significant Hits**
 
@@ -507,20 +533,20 @@ names(num_sig_no_covs) <- phenotype_names
 names(num_sig_with_covs) <- phenotype_names
 
 for (phenotype in phenotype_names) {
-  num_sig_no_covs[phenotype] <- 
-    gwas_no_covs_results[[phenotype]] %>% 
+  num_sig_no_covs[phenotype] <-
+    gwas_no_covs_results[[phenotype]] %>%
     {. * length(.)} %>% {. < 0.05} %>% which() %>% length()
-  
-  num_sig_with_covs[phenotype] <- 
-    gwas_with_covs_results[[phenotype]] %>% 
+
+  num_sig_with_covs[phenotype] <-
+    gwas_with_covs_results[[phenotype]] %>%
     {. * length(.)} %>% {. < 0.05} %>% which() %>% length()
-  
+
   top_sig_hits_no_covs[[phenotype]] <-
-    gwas_no_covs_results[[phenotype]] %>% 
+    gwas_no_covs_results[[phenotype]] %>%
     sort() %>% head(3) %>% names() %>% paste0(collapse = ',')
-  
+
   top_sig_hits_with_covs[[phenotype]] <-
-    gwas_with_covs_results[[phenotype]] %>% 
+    gwas_with_covs_results[[phenotype]] %>%
     sort() %>% head(3) %>% names() %>% paste0(collapse = ',')
 }
 ```
@@ -528,31 +554,31 @@ for (phenotype in phenotype_names) {
 
 ```{r, eval = FALSE}
 data.frame(
-  Phenotype = c('ERAP2', 'PEX6', 'FAHD1'), 
-  'Num Sig. without covs' = c(num_sig_no_covs['ERAP2'], 
+  Phenotype = c('ERAP2', 'PEX6', 'FAHD1'),
+  'Num Sig. without covs' = c(num_sig_no_covs['ERAP2'],
                                     num_sig_no_covs['PEX6'],
-                                    num_sig_no_covs['FAHD1']), 
-  'Num Sig. with covs' =  c(num_sig_with_covs['ERAP2'], 
+                                    num_sig_no_covs['FAHD1']),
+  'Num Sig. with covs' =  c(num_sig_with_covs['ERAP2'],
                                     num_sig_with_covs['PEX6'],
-                                    num_sig_with_covs['FAHD1']), 
-  'Top 3 Sig. without covs' = c(top_sig_hits_no_covs[['ERAP2']], 
-                                      top_sig_hits_no_covs[['PEX6']], 
-                                      top_sig_hits_no_covs[['FAHD1']]), 
-  'Top 3 Sig. with' = c(top_sig_hits_with_covs[['ERAP2']], 
-                                     top_sig_hits_with_covs[['PEX6']], 
+                                    num_sig_with_covs['FAHD1']),
+  'Top 3 Sig. without covs' = c(top_sig_hits_no_covs[['ERAP2']],
+                                      top_sig_hits_no_covs[['PEX6']],
+                                      top_sig_hits_no_covs[['FAHD1']]),
+  'Top 3 Sig. with' = c(top_sig_hits_with_covs[['ERAP2']],
+                                     top_sig_hits_with_covs[['PEX6']],
                                      top_sig_hits_with_covs[['FAHD1']])
-  ) %>% 
-  kable()
+  )
 ```
 
+
+Table 4: Count of most significant genotypes for each phenotype that returned significant results, along with the three most significant genotypes for each phenotype.
 
 Analysis | ERAP2 # of Significant Genotypes | ERAP2 3 Most Significant Genotypes | PEX6 # of Significant Genotypes | PEX6 3 Most Significant Genotypes | FAHD1 # of Significant Genotypes | FAHD1 3 Most Significant Genotypes
 --- | --- | --- | --- | --- | --- | ---
 Without Covariates | 73 | rs7726445, rs7731592, rs2161548 | 29 | rs1129187, rs10948061, rs9471985 | 90 | rs11644748, rs140254902, rs9652776
 --- | --- | --- | --- | --- | --- | ---
-With One Hot Encoded Covariates | 73 | rs7726445, rs7731592, rs2161548 | 27 | rs1129187, rs10948061, rs9471985 | 90 | rs11644748, rs140254902, rs9652776
---- | --- | --- | --- | --- | --- | ---
-With Linearly Encoded Covariates | 74 | rs7726445, rs7731592, rs2161548 | 28 | rs1129187, rs10948061, rs9471985 | 90 | rs11644748, rs140254902, rs9652776
+With Covariates | 75 | rs7726445, rs7731592, rs2161548 | 26 | rs1129187, rs10948061, rs9471985 | 89 | rs11644748, rs140254902, rs9652776
+
 
 
 ## **Biological Support of Found Hits**

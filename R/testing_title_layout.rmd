@@ -29,12 +29,7 @@ With One Hot Encoded Covariates | 73 | rs7726445, rs7731592, rs2161548 | 27 | rs
 --- | --- | --- | --- | --- | --- | ---
 With Linearly Encoded Covariates | 74 | rs7726445, rs7731592, rs2161548 | 28 | rs1129187, rs10948061, rs9471985 | 90 | rs11644748, rs140254902, rs9652776
 
-
-|      |Phenotype | Num.Sig..without.covs| Num.Sig..with.covs|Top.3.Sig..without.covs          |Top.3.Sig..with                  |
-|:-----|:---------|---------------------:|------------------:|:--------------------------------|:--------------------------------|
-|ERAP2 |ERAP2     |                    73|                 75|rs7726445,rs7731592,rs2161548    |rs7726445,rs7731592,rs2161548    |
-|PEX6  |PEX6      |                    29|                 26|rs1129187,rs10948061,rs9471985   |rs1129187,rs10948061,rs9471985   |
-|FAHD1 |FAHD1     |                    90|                 89|rs11644748,rs140254902,rs9652776 |rs11644748,rs140254902,rs9652776 |
+\newpage
 
 The data associated with the following analyses represents the mRNA expression levels of five different transcripts of interest (ERAP2, PEX6, FAHD1, GFM1 and MARCHF7), measured from four European or European-related populations. mRNA expression profiles were quantified through Next-Generation Sequencing (NGS) of reverse-transcribed cDNA of RNA samples dervied from Lymphoblastic Cell Lines (LCLs) generated from each individual in the study, originating from the 1000 Genomes Project.
 
