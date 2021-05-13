@@ -542,32 +542,17 @@ data.frame(
                                      top_sig_hits_with_covs[['PEX6']], 
                                      top_sig_hits_with_covs[['FAHD1']])
   ) %>% 
-  kable('latex')
+  kable()
 ```
 
-\begin{tabular}{l|l|r|r|l|l}
-\hline
-  & Phenotype & Num.Sig..without.covs & Num.Sig..with.covs & Top.3.Sig..without.covs & Top.3.Sig..with\\
-\hline
-ERAP2 & ERAP2 & 73 & 75 & rs7726445,
-rs7731592,
-rs2161548 & rs7726445,
-rs7731592,
-rs2161548\\
-\hline
-PEX6 & PEX6 & 29 & 26 & rs1129187,
-rs10948061,
-rs9471985 & rs1129187,
-rs10948061,
-rs9471985\\
-\hline
-FAHD1 & FAHD1 & 90 & 89 & rs11644748,
-rs140254902,
-rs9652776 & rs11644748,
-rs140254902,
-rs9652776\\
-\hline
-\end{tabular}
+
+Analysis | ERAP2 # of Significant Genotypes | ERAP2 3 Most Significant Genotypes | PEX6 # of Significant Genotypes | PEX6 3 Most Significant Genotypes | FAHD1 # of Significant Genotypes | FAHD1 3 Most Significant Genotypes
+--- | --- | --- | --- | --- | --- | ---
+Without Covariates | 73 | rs7726445, rs7731592, rs2161548 | 29 | rs1129187, rs10948061, rs9471985 | 90 | rs11644748, rs140254902, rs9652776
+--- | --- | --- | --- | --- | --- | ---
+With One Hot Encoded Covariates | 73 | rs7726445, rs7731592, rs2161548 | 27 | rs1129187, rs10948061, rs9471985 | 90 | rs11644748, rs140254902, rs9652776
+--- | --- | --- | --- | --- | --- | ---
+With Linearly Encoded Covariates | 74 | rs7726445, rs7731592, rs2161548 | 28 | rs1129187, rs10948061, rs9471985 | 90 | rs11644748, rs140254902, rs9652776
 
 
 ## **Biological Support of Found Hits**
