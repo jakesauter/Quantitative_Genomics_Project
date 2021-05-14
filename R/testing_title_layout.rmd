@@ -7,6 +7,7 @@ output:
 header-includes:
   - \usepackage{titling}
   - \setlength{\droptitle}{-5em} 
+  - \setlength{\topmargin}{-40pt}
 fontsize: 11pt
 geometry: margin=0.85in
 ---
